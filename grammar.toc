@@ -70,6 +70,8 @@
   (fr/pure (parser-always v)))
 
 (deftype Cat [rules]
+  (assert (instance? List rules))
+
   Stringable
   (string-list [_] (comp (list "<ParserConcat ")
                          (flat-map (interpose rules ", ") string-list)
@@ -83,6 +85,8 @@
   (fr/free-monad (Cat (map rules string-terminal))))
 
 (deftype Union [rules]
+  (assert (instance? List rules))
+
   Stringable
   (string-list [_] (comp (list "<ParserUnion ")
                          (flat-map (interpose rules ", ") string-list)
@@ -145,6 +149,8 @@
   (apply* (fr/pure f) (map rules string-terminal)))
 
 (defn optional [rule]
-  (any (apply* (fr/pure maybe) (list (string-terminal rule)))
+  (any (apply* (fr/pure (fn ([] (maybe ""))
+                          ([x] (maybe x))))
+               (list (string-terminal rule)))
        (apply* (fr/pure (constantly nothing))
                (list (term "")))))
