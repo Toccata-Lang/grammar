@@ -143,7 +143,7 @@
                           (char-range "A" "F"))))
 
 (defn one-of [coll]
-  (apply any (seq coll)))
+  (apply* any (seq coll)))
 
 (defn apply-fn [f & rules]
   (apply* (fr/pure f) (map rules string-terminal)))
