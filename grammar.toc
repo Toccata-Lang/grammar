@@ -1,7 +1,7 @@
 
 (add-ns fr (git-dependency "https://github.com/Toccata-Lang/Free.git"
                            "free.toc"
-                           :sha "2ab53a3"))
+                           :sha "9727acf"))
 
 (deftype get-state-value [key])
 
@@ -100,6 +100,10 @@
   (fr/free-monad (Union (map rules string-terminal))))
 
 (deftype none-or-more-rule [rule]
+  Stringable
+  (string-list [_]
+    (list "none-or-more"))
+
   Container
   (map [_ f]
     (none-or-more-rule (f rule))))
@@ -128,7 +132,10 @@
 (defn recursive-rule [name grammar]
   (fr/free-monad (recursive-parser-rule name (string-terminal grammar))))
 
-(deftype recursion-rule [rule-name])
+(deftype recursion-rule [rule-name]
+  Stringable
+  (string-list [_]
+    (list "<RecursionRule " rule-name ">")))
 
 (defn recurse [rule-name]
   (fr/pure (recursion-rule rule-name)))
@@ -143,14 +150,14 @@
                           (char-range "A" "F"))))
 
 (defn one-of [coll]
-  (apply* any (seq coll)))
+  (apply any (seq coll)))
 
 (defn apply-fn [f & rules]
-  (apply* (fr/pure f) (map rules string-terminal)))
+  (apply (fr/pure f) (map rules string-terminal)))
 
 (defn optional [rule]
-  (any (apply* (fr/pure (fn ([] (maybe ""))
+  (any (apply (fr/pure (fn ([] (maybe ""))
                           ([x] (maybe x))))
                (list (string-terminal rule)))
-       (apply* (fr/pure (constantly nothing))
+       (apply (fr/pure (constantly nothing))
                (list (term "")))))
