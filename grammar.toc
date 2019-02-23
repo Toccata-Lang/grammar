@@ -125,6 +125,10 @@
   (fr/free-monad (parser-rule name (string-terminal grammar))))
 
 (deftype recursive-parser-rule [name grammar]
+  Stringable
+  (string-list [_]
+    (list "<RecursiveRule " (str name) ">"))
+
   Container
   (map [_ f]
     (recursive-parser-rule name (f grammar))))
