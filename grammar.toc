@@ -3,6 +3,11 @@
                            "free.toc"
                            :sha "89d07a3"))
 
+(deftype error-value [msg])
+
+(defn error [msg]
+  (fr/pure (error-value msg)))
+
 (deftype get-state-value [key])
 
 (defn get-value [key]
