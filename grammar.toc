@@ -1,7 +1,7 @@
 
 (add-ns fr (git-dependency "https://github.com/Toccata-Lang/Free.git"
                            "free.toc"
-                           :sha "89d07a3"))
+                           :sha "190941b"))
 
 (deftype error-value [msg])
 
