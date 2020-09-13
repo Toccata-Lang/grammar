@@ -1,7 +1,7 @@
 
 (add-ns fr (git-dependency "https://github.com/Toccata-Lang/Free.git"
                            "free.toc"
-                           :sha "190941b"))
+                           :sha "2703619"))
 
 (deftype error-value [msg])
 
@@ -21,11 +21,16 @@
 (deftype parser-not-char [test-c])
 
 (defn not-char [test-c]
+  (assert (instance? String test-c))
+
   (fr/pure (parser-not-char test-c)))
 
 (deftype parser-char-range [lower higher])
 
 (defn char-range [lower higher]
+  (assert (instance? String lower))
+  (assert (instance? String higher))
+
   (fr/pure (parser-char-range lower higher)))
 
 (deftype parser-term-fn [f])
@@ -34,8 +39,10 @@
   (fr/pure (parser-term-fn f)))
 
 (deftype parser-terminal [term-str]
+  (assert (instance? String term-str))
+
   Stringable
-  (string-list [_] (list "<Term " (str term-str) ">")))
+  (string-list [_] (list "<Term " term-str ">")))
 
 ;; too much of a perf hit to write in terms of 'term-fn'
 (defn term [term-str]
