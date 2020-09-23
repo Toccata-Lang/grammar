@@ -1,14 +1,43 @@
 
 (add-ns fr (git-dependency "https://github.com/Toccata-Lang/Free.git"
                            "free.toc"
-                           :sha "2703619"))
+                           :sha "5c353f2"))
 
-(deftype error-value [msg])
+(deftype error-value [msg]
+  Stringable
+  (string-list [_]
+    (list (str "(error-value " msg ")")))
 
-(defn error [msg]
-  (fr/pure (error-value msg)))
+  Container
+  (map [x f]
+    (print-err 'error-blewie msg f)
+    (abort)) )
 
-(deftype get-state-value [key])
+(defn error [& msgs]
+  (-> msgs
+      (interpose " ")
+      to-str
+      error-value
+      fr/pure))
+
+(deftype parser-get-text [])
+
+(def get-text (fr/pure (parser-get-text)))
+
+(deftype error-catcher [handler rule])
+
+(defn catch-error [f rule]
+  (fr/pure (error-catcher f rule)))
+
+(deftype get-state-value [key]
+  Stringable
+  (string-list [_]
+    (list (str "(get-state-value '" key ")")))
+
+  Container
+  (map [x f]
+    (print-err 'blewie key f)
+    (abort)))
 
 (defn get-value [key]
   (fr/pure (get-state-value key)))
