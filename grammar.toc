@@ -1,7 +1,34 @@
 
-(add-ns fr (git-dependency "https://github.com/Toccata-Lang/Free.git"
-                           "free.toc"
-                           :sha "5c353f2"))
+(deftype parser-apply [pf args]
+  Stringable
+  (string-list [_]
+    (list "(parser-apply " "(parser-always <fn>)" ;; (str pf)
+          "\n" (to-str (interpose args "\n")) ")"))
+
+  Container
+  (map [_ f]
+    (parser-apply pf (map args f)))
+
+  (map [_ f embed]
+    (for [new-pf pf
+          new-args (map args f)]
+      (parser-apply new-pf new-args))))
+
+(deftype parser-always [value]
+  Stringable
+  (string-list [_]
+    (list "(parser-always " (str value) ")"))
+
+  Container
+  (map [x f]
+    (parser-always (f value)))
+
+  (map [x f embed]
+    (map (f value)
+         (partial parser-always))))
+
+(defn always [v]
+  (parser-always v))
 
 (deftype error-value [msg]
   Stringable
@@ -10,24 +37,46 @@
 
   Container
   (map [x f]
-    (print-err 'error-blewie msg f)
-    (abort)) )
+    x)
+
+  (map [x f embed]
+    (embed x)))
 
 (defn error [& msgs]
   (-> msgs
       (interpose " ")
       to-str
-      error-value
-      fr/pure))
+      error-value))
 
-(deftype parser-get-text [])
+(deftype parser-get-text []
+  Stringable
+  (string-list [_]
+    (list (str "(parser-get-text)")))
 
-(def get-text (fr/pure (parser-get-text)))
+  Container
+  (map [x f]
+    x)
 
-(deftype error-catcher [handler rule])
+  (map [x f embed]
+    (embed x)))
+
+(def get-text (parser-get-text))
+
+(deftype error-catcher [handler rule]
+  Stringable
+  (string-list [_]
+    (list (str "(error-catcher " handler " " rule ")")))
+
+  Container
+  (map [x f]
+    (.rule x (f x)))
+
+  (map [x f embed]
+    (map (f x)
+         (partial .rule x))))
 
 (defn catch-error [f rule]
-  (fr/pure (error-catcher f rule)))
+  (error-catcher f rule))
 
 (deftype get-state-value [key]
   Stringable
@@ -36,154 +85,227 @@
 
   Container
   (map [x f]
-    (print-err 'blewie key f)
-    (abort)))
+    x)
+  
+  (map [x f embed]
+    (embed x)))
 
 (defn get-value [key]
-  (fr/pure (get-state-value key)))
+  (get-state-value key))
 
-(deftype update-state-value [key f])
+(deftype update-state-value [key f]
+  Stringable
+  (string-list [_]
+    (list "(update-state-value " (str key) " " (str f) ")"))
+
+  Container
+  (map [x _]
+    x)
+  
+  (map [x _ embed]
+    (embed x)))
 
 (defn update-value [key f]
-  (fr/pure (update-state-value key f)))
+  (update-state-value key f))
 
-(deftype parser-not-char [test-c])
+(deftype parser-not-char [test-c]
+  Stringable
+  (string-list [_]
+    (list "(parser-not-char " (str test-c) ")"))
+  
+  Container
+  (map [x _]
+    x)
+  
+  (map [x _ embed]
+    (embed x)))
 
 (defn not-char [test-c]
   (assert (instance? String test-c))
 
-  (fr/pure (parser-not-char test-c)))
+  (parser-not-char test-c))
 
-(deftype parser-char-range [lower higher])
+(deftype parser-char-range [lower higher]
+  Stringable
+  (string-list [_]
+    (list "(parser-char-range " (str "\"" lower "\"") " " (str "\"" higher "\"") ")"))
+
+  Container
+  (map [x f]
+    x)
+
+  (map [x f embed]
+    (embed x)))
 
 (defn char-range [lower higher]
   (assert (instance? String lower))
   (assert (instance? String higher))
 
-  (fr/pure (parser-char-range lower higher)))
+  (parser-char-range lower higher))
 
-(deftype parser-term-fn [f])
+(deftype parser-term-fn [f]
+  Stringable
+  (string-list [_]
+    (list "(parser-term-fn " (str f) ")"))
+
+  Container
+  (map [x _]
+    x)
+
+  (map [x _ embed]
+    (embed x)))
 
 (defn term-fn [f]
-  (fr/pure (parser-term-fn f)))
+  (parser-term-fn f))
 
 (deftype parser-terminal [term-str]
   (assert (instance? String term-str))
 
   Stringable
-  (string-list [_] (list "<Term " term-str ">")))
+  (string-list [_] (list "(parser-terminal " (str "\"" term-str "\"") ")"))
+
+  Container
+  (map [x f]
+    x)
+
+  (map [x f embed]
+    (embed x)))
 
 ;; too much of a perf hit to write in terms of 'term-fn'
+;; but maybe not now
 (defn term [term-str]
-  (fr/pure (parser-terminal term-str)))
+  (parser-terminal term-str))
 
 (defprotocol StringTerminal
-  (string-terminal [rule] rule))
+  (string-terminal [rule]
+    rule))
 
 (extend-type String
   StringTerminal
-  (string-terminal [s] (term s)))
+  (string-terminal [s]
+    (term s)))
 
 (deftype repeat-rule [rule]
   Stringable
-  (string-list [_] (comp (list "<Repeat ")
-                         (string-list rule)
-                         (list ">")))
+  (string-list [_]
+    (list "(repeat-rule " (str rule) ")"))
 
   Container
   (map [_ f]
     (repeat-rule (f rule))))
 
 (defn one-or-more [rule]
-  (fr/free-monad (repeat-rule (string-terminal rule))))
-
-(deftype ignore-rule [rule]
-  Container
-  (map [_ f]
-    (ignore-rule (f rule))))
-
-(defn ignore [rule]
-  (fr/free-monad (ignore-rule (string-terminal rule))))
-
-(deftype parser-always [v])
-
-(defn always [v]
-  (fr/pure (parser-always v)))
-
-(deftype Cat [rules]
-  (assert (instance? List rules))
-
-  Stringable
-  (string-list [_] (comp (list "<ParserConcat ")
-                         (flat-map (interpose rules ", ") string-list)
-                         (list ">")))
-
-  Container
-  (map [_ f]
-    (Cat (map rules f))))
-
-(defn all [& rules]
-  (fr/free-monad (Cat (map rules string-terminal))))
-
-(deftype Union [rules]
-  (assert (instance? List rules))
-
-  Stringable
-  (string-list [_] (comp (list "<ParserUnion ")
-                         (flat-map (interpose rules ", ") string-list)
-                         (list ">")))
-
-  Container
-  (map [_ f]
-    (Union (map rules f))))
-
-(defn any [& rules]
-  (fr/free-monad (Union (map rules string-terminal))))
+  (repeat-rule rule))
 
 (deftype none-or-more-rule [rule]
   Stringable
   (string-list [_]
-    (list "none-or-more"))
+    (list "(none-or-more " (str rule) ")"))
 
   Container
   (map [_ f]
     (none-or-more-rule (f rule))))
 
 (defn none-or-more [rule]
-  (fr/free-monad (none-or-more-rule (string-terminal rule))))
+  (none-or-more-rule rule))
 
-(deftype parser-rule [name grammar]
+(deftype ignore-rule [rule]
   Stringable
-  (string-list [_] (comp (list "<ParserRule " (str name) " ")
-                         (string-list grammar)
-                         (list ">")))
+  (string-list [_]
+    (list "(ignore-rule " (str rule) ")"))
 
   Container
   (map [_ f]
-    (parser-rule name (f grammar))))
+    (ignore-rule (f rule))))
 
-(defn rule [name grammar]
-  (fr/free-monad (parser-rule name (string-terminal grammar))))
+(defn ignore [rule]
+  (ignore-rule rule))
 
-(deftype recursive-parser-rule [name grammar]
+(deftype Any-rule [rules]
+  (assert (instance? Vector rules))
+  ;; min-count rules 1
+
   Stringable
-  (string-list [_]
-    (list "<RecursiveRule " (str name) ">"))
+  (string-list [_] (comp (list "(Any-rule [")
+                         (flat-map (interpose rules "\n") string-list)
+                         (list "])")))
 
   Container
   (map [_ f]
-    (recursive-parser-rule name (f grammar))))
+    (Any-rule (map rules f)))
 
-(defn recursive-rule [name grammar]
-  (fr/free-monad (recursive-parser-rule name (string-terminal grammar))))
+  (map [_ f embed]
+    (map (map rules f embed)
+         (partial Any-rule))))
 
-(deftype recursion-rule [rule-name]
+(defn any [& rules]
+  (Any-rule (vec rules)))
+
+(deftype All-rule [rules]
+  (assert (instance? Vector rules))
+  ;; min-count rules 1
+
+  Stringable
+  (string-list [_] (comp (list "(All-rule [")
+                         (flat-map (interpose rules "\n") string-list)
+                         (list "])")))
+
+  Container
+  (map [_ f]
+    (All-rule (map rules f)))
+
+  (map [_ f embed]
+    (map (map rules f embed)
+         (partial All-rule))))
+
+(defn all [& rules]
+  (All-rule (vec rules)))
+
+(defn optional
+  ([rule] (optional (parser-apply (parser-always maybe)
+                                  [rule])
+                    nothing))
+  ([rule default-value]
+   (any rule (parser-always default-value))))
+
+(deftype recursion-rule [rule-name prom]
   Stringable
   (string-list [_]
-    (list "<RecursionRule " rule-name ">")))
+    (list "(recursion-rule " rule-name " " (str prom) ")"))
+
+  Container
+  (map [x f]
+    x)
+
+  (map [x f embed]
+    (embed x)))
 
 (defn recurse [rule-name]
-  (fr/pure (recursion-rule rule-name)))
+  (recursion-rule rule-name (promise)))
+
+(deftype parser-rule [name grammar]
+  (assert (instance? String name))
+
+  Stringable
+  (string-list [_] (comp (list "(parser-rule\n" (str "\"" name "\"") "\n")
+                         (string-list grammar)
+                         (list ")")))
+
+  Container
+  (map [_ f]
+    (parser-rule name (f grammar)))
+
+  (map [_ f embed]
+    (map (f grammar)
+         (partial parser-rule name))))
+
+(defn rule [rule-name grammar]
+  (cond (instance? recursion-rule rule-name)
+        (do
+          (deliver (.prom rule-name) grammar)
+          (parser-rule (.rule-name rule-name) grammar))
+
+        (parser-rule rule-name grammar)))
 
 (def lower-alpha (rule "lower-alpha" (char-range "a" "z")))
 (def upper-alpha (rule "upper-alpha" (char-range "A" "Z")))
@@ -195,14 +317,36 @@
                           (char-range "A" "F"))))
 
 (defn one-of [coll]
-  (apply any (seq coll)))
+  (apply any (vec coll)))
 
 (defn apply-fn [f & rules]
-  (apply (fr/pure f) (map rules string-terminal)))
+  (apply f (map rules string-terminal)))
 
-(defn optional [rule]
-  (any (apply (fr/pure (fn ([] (maybe ""))
-                          ([x] (maybe x))))
-               (list (string-terminal rule)))
-       (apply (fr/pure (constantly nothing))
-               (list (term "")))))
+(def ParserElement (any-of parser-always
+                           parser-apply
+                           error-value
+                           parser-rule
+                           parser-get-text
+                           error-catcher
+                           get-state-value
+                           update-state-value
+                           parser-not-char
+                           parser-char-range
+                           parser-term-fn
+                           parser-terminal
+                           none-or-more-rule
+                           All-rule
+                           Any-rule
+                           ignore-rule
+                           repeat-rule
+                           recursion-rule))
+
+(extend-type ParserElement
+  Container
+  (wrap [_ x]
+    (parser-always x))
+
+  (apply [xf xs]
+    (parser-apply xf xs)))
+
+
