@@ -3,16 +3,15 @@
   Stringable
   (string-list [_]
     (list "(parser-apply " "(parser-always <fn>)" ;; (str pf)
-          "\n" (to-str (interpose args "\n")) ")"))
+          "\n[" (to-str (interpose args "\n")) "])"))
 
   Container
   (map [_ f]
     (parser-apply pf (map args f)))
 
   (map [_ f embed]
-    (for [new-pf pf
-          new-args (map args f)]
-      (parser-apply new-pf new-args))))
+    (map (map args f embed)
+         (partial parser-apply pf))))
 
 (deftype parser-always [value]
   Stringable
@@ -21,11 +20,10 @@
 
   Container
   (map [x f]
-    (parser-always (f value)))
+    x)
 
   (map [x f embed]
-    (map (f value)
-         (partial parser-always))))
+    (embed x)))
 
 (defn always [v]
   (parser-always v))
@@ -192,7 +190,11 @@
 
   Container
   (map [_ f]
-    (repeat-rule (f rule))))
+    (repeat-rule (f rule)))
+
+  (map [_ f embed]
+    (map (f rule)
+         repeat-rule)))
 
 (defn one-or-more [rule]
   (repeat-rule rule))
@@ -204,7 +206,11 @@
 
   Container
   (map [_ f]
-    (none-or-more-rule (f rule))))
+    (none-or-more-rule (f rule)))
+
+  (map [_ f embed]
+    (map (f rule)
+         none-or-more-rule)))
 
 (defn none-or-more [rule]
   (none-or-more-rule rule))
@@ -216,7 +222,10 @@
 
   Container
   (map [_ f]
-    (ignore-rule (f rule))))
+    (ignore-rule (f rule)))
+
+  (map [_ f embed]
+    (map (f rule) ignore-rule)))
 
 (defn ignore [rule]
   (ignore-rule rule))
@@ -236,7 +245,7 @@
 
   (map [_ f embed]
     (map (map rules f embed)
-         (partial Any-rule))))
+         Any-rule)))
 
 (defn any [& rules]
   (Any-rule (vec rules)))
@@ -256,7 +265,7 @@
 
   (map [_ f embed]
     (map (map rules f embed)
-         (partial All-rule))))
+         All-rule)))
 
 (defn all [& rules]
   (All-rule (vec rules)))
@@ -284,8 +293,6 @@
   (recursion-rule rule-name (promise)))
 
 (deftype parser-rule [name grammar]
-  (assert (instance? String name))
-
   Stringable
   (string-list [_] (comp (list "(parser-rule\n" (str "\"" name "\"") "\n")
                          (string-list grammar)
