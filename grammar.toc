@@ -109,7 +109,7 @@
 (deftype parser-not-char [test-c]
   Stringable
   (string-list [_]
-    (list "(parser-not-char " (str test-c) ")"))
+    (list "(parser-not-char " (str "\"" (escape-chars test-c) "\"") ")"))
   
   Container
   (map [x _]
@@ -160,7 +160,8 @@
   (assert (instance? String term-str))
 
   Stringable
-  (string-list [_] (list "(parser-terminal " (str "\"" term-str "\"") ")"))
+  (string-list [_] (list "(parser-terminal "
+                         (str "\"" (escape-chars term-str) "\"") ")"))
 
   Container
   (map [x f]
