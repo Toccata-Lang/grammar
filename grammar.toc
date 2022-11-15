@@ -308,12 +308,7 @@
          (partial parser-rule name))))
 
 (defn rule [rule-name grammar]
-  (cond (instance? recursion-rule rule-name)
-        (do
-          (deliver (.prom rule-name) grammar)
-          (parser-rule (.rule-name rule-name) grammar))
-
-        (parser-rule rule-name grammar)))
+  (parser-rule rule-name grammar))
 
 (def lower-alpha (rule "lower-alpha" (char-range "a" "z")))
 (def upper-alpha (rule "upper-alpha" (char-range "A" "Z")))
