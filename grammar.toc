@@ -278,10 +278,10 @@
   ([rule default-value]
    (any rule (parser-always default-value))))
 
-(deftype recursion-rule [rule-name prom]
+(deftype recursion-rule [rule-name]
   Stringable
   (string-list [_]
-    (list "(recursion-rule " rule-name " " (str prom) ")"))
+    (list "(recursion-rule " rule-name ")"))
 
   Container
   (map [x f]
@@ -291,7 +291,7 @@
     (embed x)))
 
 (defn recurse [rule-name]
-  (recursion-rule rule-name (promise)))
+  (recursion-rule rule-name))
 
 (deftype parser-rule [name grammar]
   Stringable
