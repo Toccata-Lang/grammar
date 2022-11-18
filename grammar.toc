@@ -2,16 +2,19 @@
 (deftype parser-apply [pf args]
   Stringable
   (string-list [_]
-    (list "(parser-apply " "(parser-always <fn>)" ;; (str pf)
+    (list "(parser-apply " (str pf)
           "\n[" (to-str (interpose args "\n")) "])"))
 
   Container
-  (map [_ f]
-    (parser-apply pf (map args f)))
+  (map [r f]
+    (let [new-pf (f pf)
+          new-args (map args f)]
+      (parser-apply new-pf new-args)))
 
-  (map [_ f embed]
-    (map (map args f embed)
-         (partial parser-apply pf))))
+  (map [r f embed]
+    (for [new-pf (f pf)
+          new-args (map args f embed)]
+      (parser-apply new-pf new-args))))
 
 (deftype parser-always [value]
   Stringable
