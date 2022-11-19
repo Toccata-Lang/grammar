@@ -296,18 +296,18 @@
 (defn recurse [rule-name]
   (recursion-rule rule-name))
 
-(deftype parser-rule [name grammar]
+(deftype parser-rule [name rule]
   Stringable
   (string-list [_] (comp (list "(parser-rule\n" (str "\"" name "\"") "\n")
-                         (string-list grammar)
+                         (string-list rule)
                          (list ")")))
 
   Container
   (map [_ f]
-    (parser-rule name (f grammar)))
+    (parser-rule name (f rule)))
 
   (map [_ f embed]
-    (map (f grammar)
+    (map (f rule)
          (partial parser-rule name))))
 
 (defn rule [rule-name grammar]
